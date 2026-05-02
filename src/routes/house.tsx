@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import { Button } from '../components/button'
 
 export const Route = createFileRoute('/house')({
   component: HousePage,
@@ -60,9 +61,9 @@ export function HousePage(): React.ReactElement {
             <a className="transition-colors hover:text-primary" href="#availability">
               Availability
             </a>
-            <button className="transition-colors hover:text-primary" onClick={() => openBooking()} type="button">
+            <Button className="p-0" onClick={() => openBooking()} type="button" variant="ghost">
               Book a Stay
-            </button>
+            </Button>
             <Link className="text-muted-foreground transition-colors hover:text-primary" to="/admin">
               Host Login
             </Link>
@@ -94,9 +95,9 @@ export function HousePage(): React.ReactElement {
             <a className="rounded-md bg-stone-950 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-stone-700" href="#availability">
               Check Availability
             </a>
-            <button className="rounded-md border border-border bg-card px-5 py-3 text-center text-sm font-semibold hover:bg-muted" onClick={() => openBooking()} type="button">
+            <Button onClick={() => openBooking()} size="lg" type="button" variant="secondary">
               Request a Stay
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -127,13 +128,9 @@ export function HousePage(): React.ReactElement {
               <p className="mt-2 text-sm text-muted-foreground">
                 Pick a check-in and check-out date, or open the form directly.
               </p>
-              <button
-                className="mt-5 block w-full rounded-md bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-700"
-                onClick={() => openBooking()}
-                type="button"
-              >
+              <Button className="mt-5 w-full" onClick={() => openBooking()} type="button">
                 Continue to Booking
-              </button>
+              </Button>
             </div>
           </aside>
         </div>
@@ -222,13 +219,13 @@ function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
-        <button className="rounded-md border px-3 py-2 text-sm hover:bg-muted" onClick={previousMonth} type="button">
+        <Button onClick={previousMonth} size="sm" type="button" variant="secondary">
           ←
-        </button>
+        </Button>
         <h3 className="font-serif text-2xl font-semibold">{monthLabel}</h3>
-        <button className="rounded-md border px-3 py-2 text-sm hover:bg-muted" onClick={nextMonth} type="button">
+        <Button onClick={nextMonth} size="sm" type="button" variant="secondary">
           →
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-7 gap-2 text-center text-sm">
@@ -244,10 +241,10 @@ function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }
           const isSelected = isInSelectedRange(date, selectedStart, selectedEnd)
 
           return (
-            <button
+            <Button
               key={date}
               className={[
-                'aspect-square rounded-lg border text-sm transition',
+                'aspect-square rounded-lg border p-0 text-sm font-normal transition',
                 isCurrentMonth ? 'bg-background hover:border-primary' : 'bg-muted/40 text-muted-foreground/40',
                 isBlocked ? 'border-rose-200 bg-rose-50 text-rose-900 line-through' : '',
                 isSelected ? 'border-primary bg-primary/10 text-primary' : '',
@@ -255,9 +252,10 @@ function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }
               disabled={isBlocked}
               onClick={() => selectDate(date)}
               type="button"
+              variant="secondary"
             >
               {day.date.getDate()}
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -351,10 +349,10 @@ function BookingDrawer(props: {
 
   return (
     <div className={props.isOpen ? 'fixed inset-0 z-[100]' : 'pointer-events-none fixed inset-0 z-[100]'}>
-      <button
+      <Button
         aria-label="Close booking form"
         className={[
-          'absolute inset-0 bg-stone-950/45 backdrop-blur-[1px] transition-opacity',
+          'absolute inset-0 rounded-none bg-stone-950/45 p-0 backdrop-blur-[1px] transition-opacity hover:bg-stone-950/45',
           props.isOpen ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
         onClick={props.onClose}
@@ -372,9 +370,9 @@ function BookingDrawer(props: {
             <h2 className="mt-2 font-serif text-3xl font-semibold">Request dates</h2>
             <p className="mt-1 text-sm text-muted-foreground">We’ll reply by email.</p>
           </div>
-          <button className="rounded-md border px-3 py-2 text-sm hover:bg-muted" onClick={props.onClose} type="button">
+          <Button onClick={props.onClose} size="sm" type="button" variant="secondary">
             Close
-          </button>
+          </Button>
         </div>
 
         <form className="flex-1 space-y-5 overflow-y-auto p-6" onSubmit={submit}>
@@ -446,12 +444,9 @@ function BookingDrawer(props: {
             </p>
           ) : null}
 
-          <button
-            className="w-full rounded-md bg-stone-950 px-4 py-3 text-sm font-semibold text-white hover:bg-stone-700 disabled:opacity-60"
-            disabled={status === 'submitting'}
-          >
+          <Button className="w-full" disabled={status === 'submitting'}>
             {status === 'submitting' ? 'Sending…' : 'Send request'}
-          </button>
+          </Button>
         </form>
       </aside>
     </div>

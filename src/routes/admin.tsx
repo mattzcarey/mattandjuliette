@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { Button } from '../components/button'
 
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
@@ -154,9 +155,9 @@ function AdminPage(): React.ReactElement {
             />
           </label>
           {loginError ? <p className="mt-4 text-sm text-red-600">{loginError}</p> : null}
-          <button className="mt-5 w-full rounded-xl bg-stone-950 px-4 py-3 font-semibold text-white hover:bg-stone-700">
+          <Button className="mt-5 w-full rounded-xl">
             Login
-          </button>
+          </Button>
         </form>
       </main>
     )
@@ -173,9 +174,9 @@ function AdminPage(): React.ReactElement {
             <h1 className="mt-2 text-4xl font-bold tracking-tight">Host Dashboard</h1>
             <p className="mt-1 text-stone-600">Bookings and blocked dates.</p>
           </div>
-          <button className="rounded-xl border bg-white px-4 py-2 text-sm font-medium hover:bg-stone-100" onClick={logout} type="button">
+          <Button className="rounded-xl" onClick={logout} size="sm" type="button" variant="secondary">
             Logout
-          </button>
+          </Button>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-3">
@@ -207,13 +208,14 @@ function AdminPage(): React.ReactElement {
                           {booking.status}
                         </span>
                         {booking.status === 'pending' ? (
-                          <button
-                            className="rounded-lg bg-stone-950 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700"
+                          <Button
+                            className="rounded-lg text-xs"
                             onClick={() => void approveBooking(booking.id)}
+                            size="sm"
                             type="button"
                           >
                             Approve
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </div>
@@ -256,9 +258,9 @@ function AdminPage(): React.ReactElement {
                 />
               </label>
               {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-              <button className="mt-5 w-full rounded-xl bg-stone-950 px-4 py-3 font-semibold text-white hover:bg-stone-700">
+              <Button className="mt-5 w-full rounded-xl">
                 Block dates
-              </button>
+              </Button>
             </form>
 
             <div className="rounded-3xl border bg-white p-6 shadow-sm">
