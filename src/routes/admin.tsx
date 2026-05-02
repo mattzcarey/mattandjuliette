@@ -26,6 +26,11 @@ type BlockedDate = {
   createdAt: string | number | Date;
 };
 
+type CalendarUrls = {
+  httpsUrl: string;
+  webcalUrl: string;
+};
+
 type ApiResponse<T> =
   | { success: true; data: T }
   | { success: false; error: string; details?: unknown };
@@ -36,18 +41,21 @@ function AdminPage(): React.ReactElement {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const [calendarUrls, setCalendarUrls] = useState<CalendarUrls | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function load(): Promise<void> {
-    const [bookingResponse, blockedResponse] = await Promise.all([
+    const [bookingResponse, blockedResponse, calendarResponse] = await Promise.all([
       fetch("/api/bookings"),
       fetch("/api/blocked-dates"),
+      fetch("/api/admin/calendar-url"),
     ]);
     const bookingJson = (await bookingResponse.json()) as ApiResponse<Booking[]>;
     const blockedJson = (await blockedResponse.json()) as ApiResponse<BlockedDate[]>;
+    const calendarJson = (await calendarResponse.json()) as ApiResponse<CalendarUrls>;
 
     if (bookingResponse.status === 401) {
       setAuthenticated(false);
@@ -56,6 +64,7 @@ function AdminPage(): React.ReactElement {
 
     if (bookingJson.success) setBookings(bookingJson.data);
     if (blockedJson.success) setBlockedDates(blockedJson.data);
+    if (calendarJson.success) setCalendarUrls(calendarJson.data);
   }
 
   useEffect(() => {
@@ -163,7 +172,9 @@ function AdminPage(): React.ReactElement {
             />
           </label>
           {loginError ? <p className="mt-4 text-sm text-red-600">{loginError}</p> : null}
-          <Button className="mt-5 w-full rounded-xl">Login</Button>
+          <Button className="mt-5 w-full rounded-xl" type="submit">
+            Login
+          </Button>
         </form>
       </main>
     );
@@ -246,6 +257,34 @@ function AdminPage(): React.ReactElement {
           </div>
 
           <aside className="space-y-6">
+            <div className="rounded-3xl border bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold">Admin calendar</h2>
+              <p className="mt-2 text-sm text-stone-600">
+                Subscribe in Apple Calendar to see bookings and blocked dates.
+              </p>
+              {calendarUrls ? (
+                <div className="mt-5 space-y-3">
+                  <a
+                    className="block rounded-xl bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-700"
+                    href={calendarUrls.webcalUrl}
+                  >
+                    Subscribe in Calendar
+                  </a>
+                  <div className="rounded-xl border bg-stone-50 p-3 text-xs text-stone-700 break-all">
+                    {calendarUrls.webcalUrl}
+                  </div>
+                  <Button
+                    className="w-full rounded-xl"
+                    onClick={() => void navigator.clipboard.writeText(calendarUrls.webcalUrl)}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Copy Calendar URL
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
             <form className="rounded-3xl border bg-white p-6 shadow-sm" onSubmit={blockDates}>
               <h2 className="text-2xl font-semibold">Block dates</h2>
               <label className="mt-5 block text-sm font-medium">
@@ -278,7 +317,9 @@ function AdminPage(): React.ReactElement {
                 />
               </label>
               {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-              <Button className="mt-5 w-full rounded-xl">Block dates</Button>
+              <Button className="mt-5 w-full rounded-xl" type="submit">
+                Block dates
+              </Button>
             </form>
 
             <div className="rounded-3xl border bg-white p-6 shadow-sm">

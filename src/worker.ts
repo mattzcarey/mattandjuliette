@@ -9,6 +9,7 @@ interface Env {
   ADMIN_PASSWORD: string;
   AUTH_SECRET: string;
   TURNSTILE_SECRET_KEY: string;
+  ADMIN_CALENDAR_TOKEN: string;
   SEND_EMAIL: SendEmail;
 }
 
@@ -140,9 +141,114 @@ async function verifyTurnstile(token: string, env: Env, request: Request): Promi
   return result.success === true;
 }
 
+function escapeIcs(value: string): string {
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll(";", "\\;")
+    .replaceAll(",", "\\,")
+    .replaceAll("\n", "\\n");
+}
+
+function formatIcsDate(date: string): string {
+  return date.replaceAll("-", "");
+}
+
+function addDays(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function createIcsEvent(input: {
+  description: string;
+  endDate: string;
+  id: string;
+  startDate: string;
+  summary: string;
+}): string {
+  const dtstamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  return [
+    "BEGIN:VEVENT",
+    `UID:${escapeIcs(input.id)}@house.mattandjuliette.com`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART;VALUE=DATE:${formatIcsDate(input.startDate)}`,
+    `DTEND;VALUE=DATE:${formatIcsDate(addDays(input.endDate, 1))}`,
+    `SUMMARY:${escapeIcs(input.summary)}`,
+    `DESCRIPTION:${escapeIcs(input.description)}`,
+    "END:VEVENT",
+  ].join("\r\n");
+}
+
+async function createAdminCalendar(env: Env): Promise<string> {
+  const db = drizzle(env.DB);
+  const [bookingRows, blockedRows] = await Promise.all([
+    db.select().from(bookings).orderBy(desc(bookings.createdAt)),
+    db.select().from(blockedDates).orderBy(desc(blockedDates.createdAt)),
+  ]);
+
+  const bookingEvents = bookingRows.map((booking) =>
+    createIcsEvent({
+      id: `booking-${booking.id}`,
+      startDate: booking.checkIn,
+      endDate: booking.checkOut,
+      summary: `[${booking.status.toUpperCase()}] ${booking.guestName} · ${booking.guestCount} guest${booking.guestCount === 1 ? "" : "s"}`,
+      description: `${booking.guestName}\n${booking.guestEmail}\n${booking.checkIn} → ${booking.checkOut}\n${booking.notes || ""}`,
+    }),
+  );
+
+  const blockedEvents = blockedRows.map((blocked) =>
+    createIcsEvent({
+      id: `blocked-${blocked.id}`,
+      startDate: blocked.startDate,
+      endDate: blocked.endDate,
+      summary: `[BLOCKED] ${blocked.reason || "Unavailable"}`,
+      description: blocked.reason || "Blocked dates",
+    }),
+  );
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Matt and Juliette//House Admin//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:Matt & Juliette House Admin",
+    "X-WR-TIMEZONE:Europe/Lisbon",
+    ...bookingEvents,
+    ...blockedEvents,
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
 async function handleApi(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const db = drizzle(env.DB);
+
+  if (request.method === "GET" && url.pathname === "/api/calendar/admin.ics") {
+    if (url.searchParams.get("token") !== env.ADMIN_CALENDAR_TOKEN) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    return new Response(await createAdminCalendar(env), {
+      headers: {
+        "Cache-Control": "private, max-age=300",
+        "Content-Disposition": 'inline; filename="mattandjuliette-admin.ics"',
+        "Content-Type": "text/calendar; charset=utf-8",
+      },
+    });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/admin/calendar-url") {
+    const unauthorized = await requireAdmin(request, env);
+    if (unauthorized) return unauthorized;
+
+    const httpsUrl = `${url.origin}/api/calendar/admin.ics?token=${env.ADMIN_CALENDAR_TOKEN}`;
+    const webcalUrl = httpsUrl.replace(/^https:/, "webcal:");
+    return json({ success: true, data: { httpsUrl, webcalUrl } });
+  }
 
   if (request.method === "GET" && url.pathname === "/api/admin/session") {
     return json({ success: true, data: { authenticated: await isAdmin(request, env) } });

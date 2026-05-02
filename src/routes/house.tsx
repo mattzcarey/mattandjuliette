@@ -55,7 +55,7 @@ export function HousePage(): React.ReactElement {
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link className="font-serif text-xl font-bold tracking-tight text-primary" to="/">
-            Costa da Caparica flat
+            Costa da Caparica
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium">
             <a className="transition-colors hover:text-primary" href="#availability">
@@ -148,7 +148,6 @@ export function HousePage(): React.ReactElement {
       <footer className="mt-12 border-t bg-muted/30 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div>
-            <p className="font-serif text-lg font-medium text-foreground">Costa da Caparica flat</p>
             <p>Costa da Caparica, Portugal</p>
           </div>
           <p>For friends of Juliette & Matt.</p>
@@ -490,7 +489,7 @@ function BookingDrawer(props: {
             </p>
           ) : null}
 
-          <Button className="w-full" disabled={status === "submitting"}>
+          <Button className="w-full" disabled={status === "submitting"} type="submit">
             {status === "submitting" ? "Sending…" : "Send request"}
           </Button>
         </form>
