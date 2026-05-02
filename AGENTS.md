@@ -59,20 +59,31 @@ Do not manually serve `env.ASSETS.fetch(request)` from the Worker.
 
 ## Secrets
 
-Local `.env` is ignored by git. Required secrets/vars:
+Use a single `.env` file at the repo root (gitignored). It serves both Vite
+(`VITE_*`) and the Cloudflare Vite plugin (Worker bindings) — do not create a
+`.dev.vars` file. Required keys:
 
 - `ADMIN_PASSWORD`
 - `AUTH_SECRET`
 - `TURNSTILE_SECRET_KEY`
+- `ADMIN_CALENDAR_TOKEN`
 - `VITE_TURNSTILE_SITE_KEY`
 
-Upload Worker secrets with:
+Upload Worker secrets to production with:
 
 ```bash
 npx wrangler secret bulk .env
 ```
 
 Note: `VITE_TURNSTILE_SITE_KEY` is public and baked into the client build.
+
+### Rule for unknown secrets
+
+If you encounter a Worker env binding that is referenced in code but not listed
+above, assume the commit that introduced it already provisioned the production
+secret. Do **not** run `wrangler secret put` or `wrangler secret bulk` for it —
+overwriting a live secret will break the running app. For local dev, drop a
+placeholder value into `.env` so the Worker boots, and update this list.
 
 ## Code rules
 
