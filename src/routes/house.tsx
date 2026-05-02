@@ -93,7 +93,7 @@ export function HousePage(): React.ReactElement {
             Costa da Caparica, Portugal
           </p>
           <h1 className="font-serif text-5xl font-bold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-            Come stay with us :)
+            Come stay with us!
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
             Our cosy 2-bedroom flat puts you steps away from one of Portugal's best surfing beaches,
