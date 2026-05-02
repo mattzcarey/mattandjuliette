@@ -106,9 +106,21 @@ function AdminPage(): React.ReactElement {
     setBookings([]);
   }
 
-  async function approveBooking(id: string): Promise<void> {
-    const response = await fetch(`/api/bookings/${id}/approve`, { method: "POST" });
+  async function updateBookingStatus(id: string, action: "approve" | "cancel"): Promise<void> {
+    const response = await fetch(`/api/bookings/${id}/${action}`, { method: "POST" });
     const result = (await response.json()) as ApiResponse<Booking>;
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    await load();
+  }
+
+  async function deleteBlockedDate(id: string): Promise<void> {
+    const response = await fetch(`/api/blocked-dates/${id}`, { method: "DELETE" });
+    const result = (await response.json()) as ApiResponse<{ id: string }>;
 
     if (!result.success) {
       setError(result.error);
@@ -241,11 +253,22 @@ function AdminPage(): React.ReactElement {
                         {booking.status === "pending" ? (
                           <Button
                             className="rounded-lg text-xs"
-                            onClick={() => void approveBooking(booking.id)}
+                            onClick={() => void updateBookingStatus(booking.id, "approve")}
                             size="sm"
                             type="button"
                           >
                             Approve
+                          </Button>
+                        ) : null}
+                        {booking.status !== "cancelled" ? (
+                          <Button
+                            className="rounded-lg text-xs"
+                            onClick={() => void updateBookingStatus(booking.id, "cancel")}
+                            size="sm"
+                            type="button"
+                            variant="secondary"
+                          >
+                            Cancel
                           </Button>
                         ) : null}
                       </div>
@@ -259,29 +282,14 @@ function AdminPage(): React.ReactElement {
           <aside className="space-y-6">
             <div className="rounded-3xl border bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-semibold">Admin calendar</h2>
-              <p className="mt-2 text-sm text-stone-600">
-                Subscribe in Apple Calendar to see bookings and blocked dates.
-              </p>
               {calendarUrls ? (
-                <div className="mt-5 space-y-3">
-                  <a
-                    className="block rounded-xl bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-700"
-                    href={calendarUrls.webcalUrl}
-                  >
-                    Subscribe in Calendar
-                  </a>
-                  <div className="rounded-xl border bg-stone-50 p-3 text-xs text-stone-700 break-all">
-                    {calendarUrls.webcalUrl}
-                  </div>
-                  <Button
-                    className="w-full rounded-xl"
-                    onClick={() => void navigator.clipboard.writeText(calendarUrls.webcalUrl)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Copy Calendar URL
-                  </Button>
-                </div>
+                <Button
+                  className="mt-5 w-full rounded-xl"
+                  onClick={() => void navigator.clipboard.writeText(calendarUrls.httpsUrl)}
+                  type="button"
+                >
+                  Copy calendar URL
+                </Button>
               ) : null}
             </div>
 
@@ -330,10 +338,25 @@ function AdminPage(): React.ReactElement {
                 <div className="mt-5 space-y-3">
                   {blockedDates.map((date) => (
                     <article key={date.id} className="rounded-2xl bg-stone-50 p-4">
-                      <p className="font-medium">
-                        {date.startDate} → {date.endDate}
-                      </p>
-                      {date.reason ? <p className="text-sm text-stone-600">{date.reason}</p> : null}
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium">
+                            {date.startDate} → {date.endDate}
+                          </p>
+                          {date.reason ? (
+                            <p className="text-sm text-stone-600">{date.reason}</p>
+                          ) : null}
+                        </div>
+                        <Button
+                          className="shrink-0 rounded-lg"
+                          onClick={() => void deleteBlockedDate(date.id)}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </article>
                   ))}
                 </div>

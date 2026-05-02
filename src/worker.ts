@@ -3,6 +3,11 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { z } from "zod";
 import { blockedDates, bookings } from "./db/schema";
+import {
+  bookingCancelledEmail,
+  bookingConfirmedEmail,
+  bookingReceivedEmail,
+} from "./templates/email";
 
 interface Env {
   DB: D1Database;
@@ -326,12 +331,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     };
 
     await db.insert(bookings).values(row);
-    await sendEmail(
-      env,
-      row.guestEmail,
-      "We received your stay request",
-      `Hi ${row.guestName},\n\nWe received your stay request for ${row.checkIn} to ${row.checkOut} (${row.guestCount} guest${row.guestCount === 1 ? "" : "s"}). It is pending for now.\n\nWe will confirm once we have reviewed the dates.\n\nMatt & Juliette`,
-    );
+    const email = bookingReceivedEmail(row);
+    await sendEmail(env, row.guestEmail, email.subject, email.body);
 
     return json({ success: true, data: row }, { status: 201 });
   }
@@ -347,14 +348,27 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
     await db.update(bookings).set({ status: "confirmed" }).where(eq(bookings.id, id));
     const approved = { ...existing, status: "confirmed" as const };
-    await sendEmail(
-      env,
-      approved.guestEmail,
-      "Your stay is confirmed",
-      `Hi ${approved.guestName},\n\nYour stay from ${approved.checkIn} to ${approved.checkOut} is confirmed.\n\nSee you soon,\nMatt & Juliette`,
-    );
+    const email = bookingConfirmedEmail(approved);
+    await sendEmail(env, approved.guestEmail, email.subject, email.body);
 
     return json({ success: true, data: approved });
+  }
+
+  const cancelMatch = url.pathname.match(/^\/api\/bookings\/([^/]+)\/cancel$/);
+  if (request.method === "POST" && cancelMatch?.[1]) {
+    const unauthorized = await requireAdmin(request, env);
+    if (unauthorized) return unauthorized;
+
+    const id = cancelMatch[1];
+    const existing = await db.select().from(bookings).where(eq(bookings.id, id)).get();
+    if (!existing) return json({ success: false, error: "Booking not found" }, { status: 404 });
+
+    await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, id));
+    const cancelled = { ...existing, status: "cancelled" as const };
+    const email = bookingCancelledEmail(cancelled);
+    await sendEmail(env, cancelled.guestEmail, email.subject, email.body);
+
+    return json({ success: true, data: cancelled });
   }
 
   if (request.method === "GET" && url.pathname === "/api/blocked-dates") {
@@ -385,6 +399,15 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
     await db.insert(blockedDates).values(row);
     return json({ success: true, data: row }, { status: 201 });
+  }
+
+  const blockedDateMatch = url.pathname.match(/^\/api\/blocked-dates\/([^/]+)$/);
+  if (request.method === "DELETE" && blockedDateMatch?.[1]) {
+    const unauthorized = await requireAdmin(request, env);
+    if (unauthorized) return unauthorized;
+
+    await db.delete(blockedDates).where(eq(blockedDates.id, blockedDateMatch[1]));
+    return json({ success: true, data: { id: blockedDateMatch[1] } });
   }
 
   return json({ success: false, error: "Not found" }, { status: 404 });
