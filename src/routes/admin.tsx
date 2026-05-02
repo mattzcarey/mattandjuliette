@@ -12,6 +12,7 @@ type Booking = {
   guestEmail: string;
   checkIn: string;
   checkOut: string;
+  guestCount: number;
   status: "pending" | "confirmed" | "cancelled";
   notes: string | null;
   createdAt: string | number | Date;
@@ -214,6 +215,9 @@ function AdminPage(): React.ReactElement {
                         <p className="text-sm text-stone-600">{booking.guestEmail}</p>
                         <p className="mt-1 text-sm">
                           {booking.checkIn} → {booking.checkOut}
+                        </p>
+                        <p className="mt-1 text-sm text-stone-600">
+                          {booking.guestCount} guest{booking.guestCount === 1 ? "" : "s"}
                         </p>
                         {booking.notes ? (
                           <p className="mt-2 text-sm text-stone-600">{booking.notes}</p>

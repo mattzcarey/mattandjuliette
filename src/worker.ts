@@ -22,6 +22,7 @@ const BookingInput = z.object({
   guestEmail: z.string().trim().email().max(200),
   checkIn: dateSchema,
   checkOut: dateSchema,
+  guestCount: z.number().int().min(1).max(4),
   notes: z.string().trim().max(1000).optional(),
   website: z.string().max(0).optional(),
   turnstileToken: z.string().min(1),
@@ -212,6 +213,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
       guestEmail: parsed.data.guestEmail,
       checkIn: parsed.data.checkIn,
       checkOut: parsed.data.checkOut,
+      guestCount: parsed.data.guestCount,
       status: "pending" as const,
       notes: parsed.data.notes || null,
       createdAt: new Date(),
@@ -222,7 +224,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
       env,
       row.guestEmail,
       "We received your stay request",
-      `Hi ${row.guestName},\n\nWe received your stay request for ${row.checkIn} to ${row.checkOut}. It is pending for now.\n\nWe will confirm once we have reviewed the dates.\n\nMatt & Juliette`,
+      `Hi ${row.guestName},\n\nWe received your stay request for ${row.checkIn} to ${row.checkOut} (${row.guestCount} guest${row.guestCount === 1 ? "" : "s"}). It is pending for now.\n\nWe will confirm once we have reviewed the dates.\n\nMatt & Juliette`,
     );
 
     return json({ success: true, data: row }, { status: 201 });

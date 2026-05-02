@@ -6,6 +6,7 @@ export const bookings = sqliteTable("bookings", {
   guestEmail: text("guest_email").notNull(),
   checkIn: text("check_in").notNull(),
   checkOut: text("check_out").notNull(),
+  guestCount: integer("guest_count").notNull().default(1),
   status: text("status", {
     enum: ["pending", "confirmed", "cancelled"],
   })

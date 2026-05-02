@@ -55,7 +55,7 @@ export function HousePage(): React.ReactElement {
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link className="font-serif text-xl font-bold tracking-tight text-primary" to="/">
-            Casa de Matt & Juliette
+            Costa da Caparica flat
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium">
             <a className="transition-colors hover:text-primary" href="#availability">
@@ -82,7 +82,7 @@ export function HousePage(): React.ReactElement {
       <section className="mx-auto grid max-w-6xl gap-10 px-4 py-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
         <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
           <img
-            alt="Casa da Caparica Terrace"
+            alt="Costa da Caparica beach"
             className="aspect-[4/3] h-full w-full object-cover"
             src="/hero.png"
           />
@@ -90,14 +90,15 @@ export function HousePage(): React.ReactElement {
 
         <div className="flex flex-col justify-center py-6">
           <p className="mb-4 text-sm font-medium uppercase tracking-[0.25em] text-primary">
-            Lisbon, Portugal
+            Costa da Caparica, Portugal
           </p>
           <h1 className="font-serif text-5xl font-bold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-            A sun-drenched summer in Lisbon.
+            Costa da Caparica flat.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Our charming room, close to everything we love about the city. We share this space with
-            friends — check the calendar below to request a stay.
+            Our cosy 2-bedroom flat puts you steps away from one of Portugal's best surfing beaches,
+            with Lisbon airport just 25 minutes away by car. Sleeps up to 4 extra guests. Perfect
+            for a beach escape, whether you're after water sports, coastal walks or pastéis de nata.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a className={buttonClassName({ size: "lg" })} href="#availability">
@@ -147,10 +148,8 @@ export function HousePage(): React.ReactElement {
       <footer className="mt-12 border-t bg-muted/30 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div>
-            <p className="font-serif text-lg font-medium text-foreground">
-              Casa de Matt & Juliette
-            </p>
-            <p>Lisbon, Portugal</p>
+            <p className="font-serif text-lg font-medium text-foreground">Costa da Caparica flat</p>
+            <p>Costa da Caparica, Portugal</p>
           </div>
           <p>For friends of Juliette & Matt.</p>
         </div>
@@ -300,6 +299,7 @@ function BookingDrawer(props: {
   const [guestEmail, setGuestEmail] = useState("");
   const [checkIn, setCheckIn] = useState(props.initialRange.checkIn);
   const [checkOut, setCheckOut] = useState(props.initialRange.checkOut);
+  const [guestCount, setGuestCount] = useState(1);
   const [notes, setNotes] = useState("");
   const [website, setWebsite] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -343,6 +343,7 @@ function BookingDrawer(props: {
         guestEmail,
         checkIn,
         checkOut,
+        guestCount,
         notes: notes || undefined,
         website: website || undefined,
         turnstileToken,
@@ -363,6 +364,7 @@ function BookingDrawer(props: {
     setGuestEmail("");
     setCheckIn("");
     setCheckOut("");
+    setGuestCount(1);
     setNotes("");
     setWebsite("");
     setTurnstileToken("");
@@ -445,6 +447,20 @@ function BookingDrawer(props: {
               />
             </label>
           </div>
+          <label className="block text-sm font-medium">
+            Number of guests
+            <select
+              className="mt-2 w-full rounded-md border bg-background px-3 py-2"
+              required
+              value={guestCount}
+              onChange={(event) => setGuestCount(Number(event.currentTarget.value))}
+            >
+              <option value={1}>1 guest</option>
+              <option value={2}>2 guests</option>
+              <option value={3}>3 guests</option>
+              <option value={4}>4 guests</option>
+            </select>
+          </label>
           <label className="hidden" aria-hidden="true">
             Website
             <input

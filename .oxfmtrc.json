@@ -3,6 +3,7 @@
   "ignorePatterns": [
     "src/routeTree.gen.ts",
     "worker-configuration.d.ts",
+    ".claude/**",
     "dist/**",
     ".wrangler/**",
     "node_modules/**"
