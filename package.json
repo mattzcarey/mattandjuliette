@@ -1,13 +1,17 @@
 {
   "name": "mattandjuliette",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "deploy": "npm run build && wrangler deploy",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "check": "npm run format:check && npm run lint && npm run build",
     "db:migrate:local": "wrangler d1 migrations apply mattandjuliette-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply mattandjuliette-db --remote",
     "cf-typegen": "wrangler types"
@@ -30,6 +34,8 @@
     "@tanstack/router-cli": "^1.166.40",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0",
     "typescript": "^5.7.2",
     "wrangler": "^4.54.0"
   }

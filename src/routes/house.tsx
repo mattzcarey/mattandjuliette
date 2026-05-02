@@ -1,12 +1,12 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
-import { Button } from '../components/button'
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Button, buttonClassName } from "../components/button";
 
-export const Route = createFileRoute('/house')({
+export const Route = createFileRoute("/house")({
   component: HousePage,
-})
+});
 
-type BookingStatus = 'idle' | 'submitting' | 'success' | 'error'
+type BookingStatus = "idle" | "submitting" | "success" | "error";
 
 declare global {
   interface Window {
@@ -14,40 +14,40 @@ declare global {
       render: (
         element: string | HTMLElement,
         options: { callback: (token: string) => void; sitekey: string },
-      ) => string
-      reset: (widgetId?: string) => void
-    }
+      ) => string;
+      reset: (widgetId?: string) => void;
+    };
   }
 }
 
 type BlockedDate = {
-  id: string
-  startDate: string
-  endDate: string
-  reason: string | null
-  createdAt: string | number | Date
-}
+  id: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  createdAt: string | number | Date;
+};
 
 type ApiResponse<T> =
   | { success: true; data: T }
-  | { success: false; error: string; details?: unknown }
+  | { success: false; error: string; details?: unknown };
 
 type SelectedRange = {
-  checkIn: string
-  checkOut: string
-}
+  checkIn: string;
+  checkOut: string;
+};
 
 export function HousePage(): React.ReactElement {
-  const [isBookingOpen, setIsBookingOpen] = useState(false)
-  const [selectedRange, setSelectedRange] = useState<SelectedRange>({ checkIn: '', checkOut: '' })
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<SelectedRange>({ checkIn: "", checkOut: "" });
 
   function openBooking(range?: SelectedRange): void {
-    if (range) setSelectedRange(range)
-    setIsBookingOpen(true)
+    if (range) setSelectedRange(range);
+    setIsBookingOpen(true);
   }
 
   function closeBooking(): void {
-    setIsBookingOpen(false)
+    setIsBookingOpen(false);
   }
 
   return (
@@ -61,10 +61,18 @@ export function HousePage(): React.ReactElement {
             <a className="transition-colors hover:text-primary" href="#availability">
               Availability
             </a>
-            <Button className="p-0" onClick={() => openBooking()} type="button" variant="ghost">
+            <Button
+              className="h-auto p-0 text-sm"
+              onClick={() => openBooking()}
+              type="button"
+              variant="ghost"
+            >
               Book a Stay
             </Button>
-            <Link className="text-muted-foreground transition-colors hover:text-primary" to="/admin">
+            <Link
+              className="text-muted-foreground transition-colors hover:text-primary"
+              to="/admin"
+            >
               Host Login
             </Link>
           </nav>
@@ -88,11 +96,11 @@ export function HousePage(): React.ReactElement {
             A sun-drenched summer in Lisbon.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Our charming room, close to everything we love about the city. We share
-            this space with friends — check the calendar below to request a stay.
+            Our charming room, close to everything we love about the city. We share this space with
+            friends — check the calendar below to request a stay.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a className="rounded-md bg-stone-950 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-stone-700" href="#availability">
+            <a className={buttonClassName({ size: "lg" })} href="#availability">
               Check Availability
             </a>
             <Button onClick={() => openBooking()} size="lg" type="button" variant="secondary">
@@ -139,7 +147,9 @@ export function HousePage(): React.ReactElement {
       <footer className="mt-12 border-t bg-muted/30 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div>
-            <p className="font-serif text-lg font-medium text-foreground">Casa de Matt & Juliette</p>
+            <p className="font-serif text-lg font-medium text-foreground">
+              Casa de Matt & Juliette
+            </p>
             <p>Lisbon, Portugal</p>
           </div>
           <p>For friends of Juliette & Matt.</p>
@@ -148,72 +158,76 @@ export function HousePage(): React.ReactElement {
 
       <BookingDrawer initialRange={selectedRange} isOpen={isBookingOpen} onClose={closeBooking} />
     </main>
-  )
+  );
 }
 
-function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }): React.ReactElement {
-  const today = new Date()
-  const [visibleMonth, setVisibleMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
-  const [selectedStart, setSelectedStart] = useState<string | null>(null)
-  const [selectedEnd, setSelectedEnd] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+function AvailabilityCalendar(props: {
+  onBook: (range?: SelectedRange) => void;
+}): React.ReactElement {
+  const today = new Date();
+  const [visibleMonth, setVisibleMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
+  const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadBlockedDates(): Promise<void> {
-      const response = await fetch('/api/blocked-dates')
-      const json = (await response.json()) as ApiResponse<BlockedDate[]>
+      const response = await fetch("/api/blocked-dates");
+      const json = (await response.json()) as ApiResponse<BlockedDate[]>;
       if (json.success) {
-        setBlockedDates(json.data)
+        setBlockedDates(json.data);
       } else {
-        setError(json.error)
+        setError(json.error);
       }
     }
 
-    void loadBlockedDates()
-  }, [])
+    void loadBlockedDates();
+  }, []);
 
   const blockedSet = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>();
     for (const range of blockedDates) {
       for (const date of datesBetween(range.startDate, range.endDate)) {
-        set.add(date)
+        set.add(date);
       }
     }
-    return set
-  }, [blockedDates])
+    return set;
+  }, [blockedDates]);
 
-  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth])
-  const monthLabel = visibleMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
+  const monthLabel = visibleMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   function previousMonth(): void {
-    setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))
+    setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1));
   }
 
   function nextMonth(): void {
-    setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))
+    setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1));
   }
 
   function selectDate(date: string): void {
-    if (blockedSet.has(date)) return
+    if (blockedSet.has(date)) return;
 
     if (!selectedStart || selectedEnd || date < selectedStart) {
-      setSelectedStart(date)
-      setSelectedEnd(null)
-      return
+      setSelectedStart(date);
+      setSelectedEnd(null);
+      return;
     }
 
-    const range = datesBetween(selectedStart, date)
+    const range = datesBetween(selectedStart, date);
     if (range.some((rangeDate) => blockedSet.has(rangeDate))) {
-      setError('That range includes blocked dates.')
-      setSelectedStart(date)
-      setSelectedEnd(null)
-      return
+      setError("That range includes blocked dates.");
+      setSelectedStart(date);
+      setSelectedEnd(null);
+      return;
     }
 
-    setError(null)
-    setSelectedEnd(date)
-    props.onBook({ checkIn: selectedStart, checkOut: date })
+    setError(null);
+    setSelectedEnd(date);
+    props.onBook({ checkIn: selectedStart, checkOut: date });
   }
 
   return (
@@ -229,26 +243,28 @@ function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }
       </div>
 
       <div className="grid grid-cols-7 gap-2 text-center text-sm">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
           <div key={day} className="py-2 font-medium text-muted-foreground">
             {day}
           </div>
         ))}
         {calendarDays.map((day) => {
-          const date = toDateKey(day.date)
-          const isCurrentMonth = day.date.getMonth() === visibleMonth.getMonth()
-          const isBlocked = blockedSet.has(date)
-          const isSelected = isInSelectedRange(date, selectedStart, selectedEnd)
+          const date = toDateKey(day.date);
+          const isCurrentMonth = day.date.getMonth() === visibleMonth.getMonth();
+          const isBlocked = blockedSet.has(date);
+          const isSelected = isInSelectedRange(date, selectedStart, selectedEnd);
 
           return (
             <Button
               key={date}
               className={[
-                'aspect-square rounded-lg border p-0 text-sm font-normal transition',
-                isCurrentMonth ? 'bg-background hover:border-primary' : 'bg-muted/40 text-muted-foreground/40',
-                isBlocked ? 'border-rose-200 bg-rose-50 text-rose-900 line-through' : '',
-                isSelected ? 'border-primary bg-primary/10 text-primary' : '',
-              ].join(' ')}
+                "h-auto aspect-square rounded-lg p-0 text-sm font-normal transition",
+                isCurrentMonth
+                  ? "bg-background hover:border-primary"
+                  : "bg-muted/40 text-muted-foreground/40",
+                isBlocked ? "border-rose-200 bg-rose-50 text-rose-900 line-through" : "",
+                isSelected ? "border-primary bg-primary/10 text-primary" : "",
+              ].join(" ")}
               disabled={isBlocked}
               onClick={() => selectDate(date)}
               type="button"
@@ -256,66 +272,72 @@ function AvailabilityCalendar(props: { onBook: (range?: SelectedRange) => void }
             >
               {day.date.getDate()}
             </Button>
-          )
+          );
         })}
       </div>
 
       <div className="mt-5 min-h-6 text-sm text-muted-foreground">
         {error ? <p className="text-rose-700">{error}</p> : null}
-        {!error && selectedStart && !selectedEnd ? <p>Selected check-in: {selectedStart}. Now choose check-out.</p> : null}
-        {!error && selectedStart && selectedEnd ? <p>Selected: {selectedStart} → {selectedEnd}</p> : null}
+        {!error && selectedStart && !selectedEnd ? (
+          <p>Selected check-in: {selectedStart}. Now choose check-out.</p>
+        ) : null}
+        {!error && selectedStart && selectedEnd ? (
+          <p>
+            Selected: {selectedStart} → {selectedEnd}
+          </p>
+        ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 function BookingDrawer(props: {
-  initialRange: SelectedRange
-  isOpen: boolean
-  onClose: () => void
+  initialRange: SelectedRange;
+  isOpen: boolean;
+  onClose: () => void;
 }): React.ReactElement {
-  const [guestName, setGuestName] = useState('')
-  const [guestEmail, setGuestEmail] = useState('')
-  const [checkIn, setCheckIn] = useState(props.initialRange.checkIn)
-  const [checkOut, setCheckOut] = useState(props.initialRange.checkOut)
-  const [notes, setNotes] = useState('')
-  const [website, setWebsite] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState('')
-  const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(null)
-  const [status, setStatus] = useState<BookingStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [checkIn, setCheckIn] = useState(props.initialRange.checkIn);
+  const [checkOut, setCheckOut] = useState(props.initialRange.checkOut);
+  const [notes, setNotes] = useState("");
+  const [website, setWebsite] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(null);
+  const [status, setStatus] = useState<BookingStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (props.isOpen) {
-      setCheckIn(props.initialRange.checkIn)
-      setCheckOut(props.initialRange.checkOut)
+      setCheckIn(props.initialRange.checkIn);
+      setCheckOut(props.initialRange.checkOut);
     }
-  }, [props.initialRange.checkIn, props.initialRange.checkOut, props.isOpen])
+  }, [props.initialRange.checkIn, props.initialRange.checkOut, props.isOpen]);
 
   useEffect(() => {
-    if (!props.isOpen || turnstileWidgetId || !window.turnstile) return
+    if (!props.isOpen || turnstileWidgetId || !window.turnstile) return;
 
-    const widgetId = window.turnstile.render('#booking-turnstile', {
+    const widgetId = window.turnstile.render("#booking-turnstile", {
       sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
       callback: setTurnstileToken,
-    })
-    setTurnstileWidgetId(widgetId)
-  }, [props.isOpen, turnstileWidgetId])
+    });
+    setTurnstileWidgetId(widgetId);
+  }, [props.isOpen, turnstileWidgetId]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    setStatus('submitting')
-    setError(null)
+    event.preventDefault();
+    setStatus("submitting");
+    setError(null);
 
     if (!turnstileToken) {
-      setStatus('error')
-      setError('Please complete the bot check.')
-      return
+      setStatus("error");
+      setError("Please complete the bot check.");
+      return;
     }
 
-    const response = await fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         guestName,
         guestEmail,
@@ -325,48 +347,54 @@ function BookingDrawer(props: {
         website: website || undefined,
         turnstileToken,
       }),
-    })
-    const result = (await response.json()) as { success: boolean; error?: string }
+    });
+    const result = (await response.json()) as { success: boolean; error?: string };
 
     if (!result.success) {
-      setStatus('error')
-      setError(result.error || 'Could not submit booking')
-      window.turnstile?.reset(turnstileWidgetId || undefined)
-      setTurnstileToken('')
-      return
+      setStatus("error");
+      setError(result.error || "Could not submit booking");
+      window.turnstile?.reset(turnstileWidgetId || undefined);
+      setTurnstileToken("");
+      return;
     }
 
-    setStatus('success')
-    setGuestName('')
-    setGuestEmail('')
-    setCheckIn('')
-    setCheckOut('')
-    setNotes('')
-    setWebsite('')
-    setTurnstileToken('')
-    window.turnstile?.reset(turnstileWidgetId || undefined)
+    setStatus("success");
+    setGuestName("");
+    setGuestEmail("");
+    setCheckIn("");
+    setCheckOut("");
+    setNotes("");
+    setWebsite("");
+    setTurnstileToken("");
+    window.turnstile?.reset(turnstileWidgetId || undefined);
   }
 
   return (
-    <div className={props.isOpen ? 'fixed inset-0 z-[100]' : 'pointer-events-none fixed inset-0 z-[100]'}>
+    <div
+      className={
+        props.isOpen ? "fixed inset-0 z-[100]" : "pointer-events-none fixed inset-0 z-[100]"
+      }
+    >
       <Button
         aria-label="Close booking form"
         className={[
-          'absolute inset-0 rounded-none bg-stone-950/45 p-0 backdrop-blur-[1px] transition-opacity hover:bg-stone-950/45',
-          props.isOpen ? 'opacity-100' : 'opacity-0',
-        ].join(' ')}
+          "absolute inset-0 h-auto rounded-none border-transparent bg-stone-950/45 p-0 backdrop-blur-[1px] transition-opacity hover:border-transparent hover:bg-stone-950/45",
+          props.isOpen ? "opacity-100" : "opacity-0",
+        ].join(" ")}
         onClick={props.onClose}
         type="button"
       />
       <aside
         className={[
-          'absolute right-0 top-0 flex h-full w-full max-w-[32rem] flex-col border-l border-border bg-white shadow-2xl transition-transform duration-300',
-          props.isOpen ? 'translate-x-0' : 'translate-x-full',
-        ].join(' ')}
+          "absolute right-0 top-0 flex h-full w-full max-w-[32rem] flex-col border-l border-border bg-white shadow-2xl transition-transform duration-300",
+          props.isOpen ? "translate-x-0" : "translate-x-full",
+        ].join(" ")}
       >
         <div className="flex items-start justify-between border-b p-6">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">Book a stay</p>
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">
+              Book a stay
+            </p>
             <h2 className="mt-2 font-serif text-3xl font-semibold">Request dates</h2>
             <p className="mt-1 text-sm text-muted-foreground">We’ll reply by email.</p>
           </div>
@@ -437,57 +465,59 @@ function BookingDrawer(props: {
 
           <div id="booking-turnstile" />
 
-          {error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
-          {status === 'success' ? (
+          {error ? (
+            <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p>
+          ) : null}
+          {status === "success" ? (
             <p className="rounded-md bg-sage-100 p-3 text-sm text-primary">
               Request sent. We’ll email you soon.
             </p>
           ) : null}
 
-          <Button className="w-full" disabled={status === 'submitting'}>
-            {status === 'submitting' ? 'Sending…' : 'Send request'}
+          <Button className="w-full" disabled={status === "submitting"}>
+            {status === "submitting" ? "Sending…" : "Send request"}
           </Button>
         </form>
       </aside>
     </div>
-  )
+  );
 }
 
 function getCalendarDays(month: Date): { date: Date }[] {
-  const first = new Date(month.getFullYear(), month.getMonth(), 1)
-  const start = new Date(first)
-  start.setDate(first.getDate() - first.getDay())
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
 
   return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start)
-    date.setDate(start.getDate() + index)
-    return { date }
-  })
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return { date };
+  });
 }
 
 function toDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function datesBetween(startDate: string, endDate: string): string[] {
-  const start = new Date(`${startDate}T00:00:00Z`)
-  const end = new Date(`${endDate}T00:00:00Z`)
-  const dates: string[] = []
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  const dates: string[] = [];
 
   for (const date = start; date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
-    dates.push(date.toISOString().slice(0, 10))
+    dates.push(date.toISOString().slice(0, 10));
   }
 
-  return dates
+  return dates;
 }
 
 function isInSelectedRange(date: string, start: string | null, end: string | null): boolean {
-  if (!start) return false
-  if (!end) return date === start
-  return date >= start && date <= end
+  if (!start) return false;
+  if (!end) return date === start;
+  return date >= start && date <= end;
 }
 
 function Legend(props: { color: string; label: string }): React.ReactElement {
@@ -496,5 +526,5 @@ function Legend(props: { color: string; label: string }): React.ReactElement {
       <span className={`block size-4 rounded ${props.color}`} />
       <span>{props.label}</span>
     </div>
-  )
+  );
 }
