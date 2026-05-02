@@ -2,7 +2,7 @@
 
 ## Current project state
 
-This repo is a single Cloudflare Workers application for `house.mattandjuliette.com`.
+This repo is a single Cloudflare Workers application for `stay.mattandjuliette.com`.
 
 - Frontend: React + Vite SPA
 - Routing: TanStack Router

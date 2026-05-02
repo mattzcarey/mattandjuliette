@@ -20,12 +20,12 @@
   "send_email": [
     {
       "name": "SEND_EMAIL",
-      "allowed_sender_addresses": ["noreply@house.mattandjuliette.com"],
+      "allowed_sender_addresses": ["stay@mattandjuliette.com"],
     },
   ],
   "observability": {
     "logs": { "enabled": true },
     "traces": { "enabled": true },
   },
-  "routes": [{ "pattern": "house.mattandjuliette.com", "custom_domain": true }],
+  "routes": [{ "pattern": "stay.mattandjuliette.com", "custom_domain": true }],
 }

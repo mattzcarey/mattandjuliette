@@ -106,6 +106,22 @@ function AdminPage(): React.ReactElement {
     setBookings([]);
   }
 
+  async function updateGuestCount(id: string, guestCount: number): Promise<void> {
+    const response = await fetch(`/api/bookings/${id}/guest-count`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guestCount }),
+    });
+    const result = (await response.json()) as ApiResponse<Booking>;
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    await load();
+  }
+
   async function updateBookingStatus(id: string, action: "approve" | "cancel"): Promise<void> {
     const response = await fetch(`/api/bookings/${id}/${action}`, { method: "POST" });
     const result = (await response.json()) as ApiResponse<Booking>;
@@ -239,9 +255,22 @@ function AdminPage(): React.ReactElement {
                         <p className="mt-1 text-sm">
                           {booking.checkIn} → {booking.checkOut}
                         </p>
-                        <p className="mt-1 text-sm text-stone-600">
-                          {booking.guestCount} guest{booking.guestCount === 1 ? "" : "s"}
-                        </p>
+                        <label className="mt-2 block text-sm text-stone-600">
+                          Guests
+                          <select
+                            className="ml-2 rounded-lg border bg-white px-2 py-1 text-sm text-stone-950"
+                            value={booking.guestCount}
+                            onChange={(event) =>
+                              void updateGuestCount(booking.id, Number(event.currentTarget.value))
+                            }
+                          >
+                            {[1, 2, 3, 4].map((count) => (
+                              <option key={count} value={count}>
+                                {count}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         {booking.notes ? (
                           <p className="mt-2 text-sm text-stone-600">{booking.notes}</p>
                         ) : null}

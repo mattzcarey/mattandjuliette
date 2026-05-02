@@ -18,7 +18,7 @@ interface Env {
   SEND_EMAIL: SendEmail;
 }
 
-const fromEmail = "noreply@house.mattandjuliette.com";
+const fromEmail = "stay@mattandjuliette.com";
 
 const authCookieName = "mandj_admin";
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -42,6 +42,10 @@ const BlockedDateInput = z.object({
   startDate: dateSchema,
   endDate: dateSchema,
   reason: z.string().trim().max(200).optional(),
+});
+
+const BookingGuestCountInput = z.object({
+  guestCount: z.number().int().min(1).max(4),
 });
 
 function json(data: unknown, init?: ResponseInit): Response {
@@ -115,7 +119,7 @@ function encodeHeader(value: string): string {
 
 function createRawEmail(to: string, subject: string, body: string): string {
   return [
-    `From: Matt & Juliette House <${fromEmail}>`,
+    `From: Matt & Juliette <${fromEmail}>`,
     `To: ${encodeHeader(to)}`,
     `Subject: ${encodeHeader(subject)}`,
     "MIME-Version: 1.0",
@@ -177,7 +181,7 @@ function createIcsEvent(input: {
     .replace(/\.\d{3}Z$/, "Z");
   return [
     "BEGIN:VEVENT",
-    `UID:${escapeIcs(input.id)}@house.mattandjuliette.com`,
+    `UID:${escapeIcs(input.id)}@stay.mattandjuliette.com`,
     `DTSTAMP:${dtstamp}`,
     `DTSTART;VALUE=DATE:${formatIcsDate(input.startDate)}`,
     `DTEND;VALUE=DATE:${formatIcsDate(addDays(input.endDate, 1))}`,
@@ -217,10 +221,10 @@ async function createAdminCalendar(env: Env): Promise<string> {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Matt and Juliette//House Admin//EN",
+    "PRODID:-//Matt and Juliette//Stay Admin//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Matt & Juliette House Admin",
+    "X-WR-CALNAME:Matt & Juliette Stay Admin",
     "X-WR-TIMEZONE:Europe/Lisbon",
     ...bookingEvents,
     ...blockedEvents,
@@ -337,6 +341,30 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     return json({ success: true, data: row }, { status: 201 });
   }
 
+  const guestCountMatch = url.pathname.match(/^\/api\/bookings\/([^/]+)\/guest-count$/);
+  if (request.method === "PATCH" && guestCountMatch?.[1]) {
+    const unauthorized = await requireAdmin(request, env);
+    if (unauthorized) return unauthorized;
+
+    const parsed = BookingGuestCountInput.safeParse(await readJson(request));
+    if (!parsed.success) {
+      return json(
+        { success: false, error: "Invalid guest count", details: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+
+    const id = guestCountMatch[1];
+    const existing = await db.select().from(bookings).where(eq(bookings.id, id)).get();
+    if (!existing) return json({ success: false, error: "Booking not found" }, { status: 404 });
+
+    await db
+      .update(bookings)
+      .set({ guestCount: parsed.data.guestCount })
+      .where(eq(bookings.id, id));
+    return json({ success: true, data: { ...existing, guestCount: parsed.data.guestCount } });
+  }
+
   const approveMatch = url.pathname.match(/^\/api\/bookings\/([^/]+)\/approve$/);
   if (request.method === "POST" && approveMatch?.[1]) {
     const unauthorized = await requireAdmin(request, env);
@@ -374,6 +402,34 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (request.method === "GET" && url.pathname === "/api/blocked-dates") {
     const rows = await db.select().from(blockedDates).orderBy(desc(blockedDates.createdAt));
     return json({ success: true, data: rows });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/busy-dates") {
+    const [blockedRows, bookingRows] = await Promise.all([
+      db.select().from(blockedDates).orderBy(desc(blockedDates.createdAt)),
+      db.select().from(bookings).orderBy(desc(bookings.createdAt)),
+    ]);
+    return json({
+      success: true,
+      data: [
+        ...blockedRows.map((row) => ({
+          id: row.id,
+          reason: row.reason,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          type: "blocked" as const,
+        })),
+        ...bookingRows
+          .filter((row) => row.status !== "cancelled")
+          .map((row) => ({
+            id: row.id,
+            reason: "At capacity",
+            startDate: row.checkIn,
+            endDate: addDays(row.checkOut, -1),
+            type: "booking" as const,
+          })),
+      ],
+    });
   }
 
   if (request.method === "POST" && url.pathname === "/api/blocked-dates") {

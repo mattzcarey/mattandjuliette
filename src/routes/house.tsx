@@ -20,12 +20,12 @@ declare global {
   }
 }
 
-type BlockedDate = {
+type BusyDate = {
   id: string;
   startDate: string;
   endDate: string;
   reason: string | null;
-  createdAt: string | number | Date;
+  type: "blocked" | "booking";
 };
 
 type ApiResponse<T> =
@@ -55,7 +55,7 @@ export function HousePage(): React.ReactElement {
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link className="font-serif text-xl font-bold tracking-tight text-primary" to="/">
-            Costa da Caparica
+            Matt and Juliette
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium">
             <a className="transition-colors hover:text-primary" href="#availability">
@@ -96,9 +96,9 @@ export function HousePage(): React.ReactElement {
             Come stay with us!
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Our cosy 2-bedroom flat puts you steps away from one of Portugal's best surfing beaches,
-            with Lisbon airport just 25 minutes away by car. Sleeps up to 4 extra guests. Perfect
-            for a beach escape, whether you're after water sports, coastal walks or pastéis de nata.
+            Our cosy place puts you steps away from one of Portugal's best surfing beaches, with
+            Lisbon airport just 25 minutes away by car. Perfect for a beach escape, whether you're
+            after water sports, coastal walks or pastéis de nata.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a className={buttonClassName({ size: "lg" })} href="#availability">
@@ -128,7 +128,7 @@ export function HousePage(): React.ReactElement {
               <div className="space-y-3 text-sm">
                 <Legend color="bg-background border" label="Available" />
                 <Legend color="bg-primary/10 border border-primary/20" label="Selected" />
-                <Legend color="bg-rose-50 border border-rose-200" label="Blocked" />
+                <Legend color="bg-rose-50 border border-rose-200" label="Busy" />
               </div>
             </div>
 
@@ -166,34 +166,34 @@ function AvailabilityCalendar(props: {
   const [visibleMonth, setVisibleMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1),
   );
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const [busyDates, setBusyDates] = useState<BusyDate[]>([]);
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadBlockedDates(): Promise<void> {
-      const response = await fetch("/api/blocked-dates");
-      const json = (await response.json()) as ApiResponse<BlockedDate[]>;
+    async function loadBusyDates(): Promise<void> {
+      const response = await fetch("/api/busy-dates");
+      const json = (await response.json()) as ApiResponse<BusyDate[]>;
       if (json.success) {
-        setBlockedDates(json.data);
+        setBusyDates(json.data);
       } else {
         setError(json.error);
       }
     }
 
-    void loadBlockedDates();
+    void loadBusyDates();
   }, []);
 
   const blockedSet = useMemo(() => {
     const set = new Set<string>();
-    for (const range of blockedDates) {
+    for (const range of busyDates) {
       for (const date of datesBetween(range.startDate, range.endDate)) {
         set.add(date);
       }
     }
     return set;
-  }, [blockedDates]);
+  }, [busyDates]);
 
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
   const monthLabel = visibleMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -217,7 +217,7 @@ function AvailabilityCalendar(props: {
 
     const range = datesBetween(selectedStart, date);
     if (range.some((rangeDate) => blockedSet.has(rangeDate))) {
-      setError("That range includes blocked dates.");
+      setError("That range includes busy dates.");
       setSelectedStart(date);
       setSelectedEnd(null);
       return;
@@ -241,7 +241,7 @@ function AvailabilityCalendar(props: {
       </div>
 
       <div className="grid grid-cols-7 gap-2 text-center text-sm">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
           <div key={day} className="py-2 font-medium text-muted-foreground">
             {day}
           </div>
@@ -501,7 +501,8 @@ function BookingDrawer(props: {
 function getCalendarDays(month: Date): { date: Date }[] {
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const start = new Date(first);
-  start.setDate(first.getDate() - first.getDay());
+  const mondayBasedDay = (first.getDay() + 6) % 7;
+  start.setDate(first.getDate() - mondayBasedDay);
 
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(start);
