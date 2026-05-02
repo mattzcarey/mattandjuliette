@@ -84,7 +84,7 @@ export function HousePage(): React.ReactElement {
           <img
             alt="Costa da Caparica beach"
             className="aspect-[4/3] h-full w-full object-cover"
-            src="/hero.png"
+            src="/hero.jpg"
           />
         </div>
 
