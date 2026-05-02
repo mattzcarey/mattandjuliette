@@ -1,14 +1,18 @@
-import { desc } from 'drizzle-orm'
+import { EmailMessage } from 'cloudflare:email'
+import { desc, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { z } from 'zod'
 import { blockedDates, bookings } from './db/schema'
 
 interface Env {
   DB: D1Database
-  ASSETS: Fetcher
   ADMIN_PASSWORD: string
   AUTH_SECRET: string
+  TURNSTILE_SECRET_KEY: string
+  SEND_EMAIL: SendEmail
 }
+
+const fromEmail = 'noreply@house.mattandjuliette.com'
 
 const authCookieName = 'mandj_admin'
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -19,6 +23,8 @@ const BookingInput = z.object({
   checkIn: dateSchema,
   checkOut: dateSchema,
   notes: z.string().trim().max(1000).optional(),
+  website: z.string().max(0).optional(),
+  turnstileToken: z.string().min(1),
 })
 
 const LoginInput = z.object({
@@ -96,6 +102,43 @@ async function requireAdmin(request: Request, env: Env): Promise<Response | null
   return json({ success: false, error: 'Unauthorized' }, { status: 401 })
 }
 
+function encodeHeader(value: string): string {
+  return value.replace(/[\r\n]/g, ' ')
+}
+
+function createRawEmail(to: string, subject: string, body: string): string {
+  return [
+    `From: Matt & Juliette House <${fromEmail}>`,
+    `To: ${encodeHeader(to)}`,
+    `Subject: ${encodeHeader(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    body,
+  ].join('\r\n')
+}
+
+async function sendEmail(env: Env, to: string, subject: string, body: string): Promise<void> {
+  await env.SEND_EMAIL.send(new EmailMessage(fromEmail, to, createRawEmail(to, subject, body)))
+}
+
+async function verifyTurnstile(token: string, env: Env, request: Request): Promise<boolean> {
+  const formData = new FormData()
+  formData.append('secret', env.TURNSTILE_SECRET_KEY)
+  formData.append('response', token)
+
+  const ip = request.headers.get('CF-Connecting-IP')
+  if (ip) formData.append('remoteip', ip)
+
+  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body: formData,
+  })
+  const result = (await response.json()) as { success?: boolean }
+  return result.success === true
+}
+
 async function handleApi(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const db = drizzle(env.DB)
@@ -150,6 +193,15 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
       )
     }
 
+    if (parsed.data.website) {
+      return json({ success: false, error: 'Invalid booking' }, { status: 400 })
+    }
+
+    const turnstileOk = await verifyTurnstile(parsed.data.turnstileToken, env, request)
+    if (!turnstileOk) {
+      return json({ success: false, error: 'Bot check failed' }, { status: 400 })
+    }
+
     if (parsed.data.checkOut <= parsed.data.checkIn) {
       return json({ success: false, error: 'Check-out must be after check-in' }, { status: 400 })
     }
@@ -166,7 +218,35 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     }
 
     await db.insert(bookings).values(row)
+    await sendEmail(
+      env,
+      row.guestEmail,
+      'We received your stay request',
+      `Hi ${row.guestName},\n\nWe received your stay request for ${row.checkIn} to ${row.checkOut}. It is pending for now.\n\nWe will confirm once we have reviewed the dates.\n\nMatt & Juliette`,
+    )
+
     return json({ success: true, data: row }, { status: 201 })
+  }
+
+  const approveMatch = url.pathname.match(/^\/api\/bookings\/([^/]+)\/approve$/)
+  if (request.method === 'POST' && approveMatch?.[1]) {
+    const unauthorized = await requireAdmin(request, env)
+    if (unauthorized) return unauthorized
+
+    const id = approveMatch[1]
+    const existing = await db.select().from(bookings).where(eq(bookings.id, id)).get()
+    if (!existing) return json({ success: false, error: 'Booking not found' }, { status: 404 })
+
+    await db.update(bookings).set({ status: 'confirmed' }).where(eq(bookings.id, id))
+    const approved = { ...existing, status: 'confirmed' as const }
+    await sendEmail(
+      env,
+      approved.guestEmail,
+      'Your stay is confirmed',
+      `Hi ${approved.guestName},\n\nYour stay from ${approved.checkIn} to ${approved.checkOut} is confirmed.\n\nSee you soon,\nMatt & Juliette`,
+    )
+
+    return json({ success: true, data: approved })
   }
 
   if (request.method === 'GET' && url.pathname === '/api/blocked-dates') {
@@ -210,6 +290,6 @@ export default {
       return handleApi(request, env)
     }
 
-    return env.ASSETS.fetch(request)
+    return new Response('Not found', { status: 404 })
   },
 }

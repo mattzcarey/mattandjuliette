@@ -7,6 +7,18 @@ export const Route = createFileRoute('/house')({
 
 type BookingStatus = 'idle' | 'submitting' | 'success' | 'error'
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        element: string | HTMLElement,
+        options: { callback: (token: string) => void; sitekey: string },
+      ) => string
+      reset: (widgetId?: string) => void
+    }
+  }
+}
+
 type BlockedDate = {
   id: string
   startDate: string
@@ -79,7 +91,7 @@ export function HousePage(): React.ReactElement {
             this space with friends — check the calendar below to request a stay.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a className="rounded-md bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90" href="#availability">
+            <a className="rounded-md bg-stone-950 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-stone-700" href="#availability">
               Check Availability
             </a>
             <button className="rounded-md border border-border bg-card px-5 py-3 text-center text-sm font-semibold hover:bg-muted" onClick={() => openBooking()} type="button">
@@ -116,7 +128,7 @@ export function HousePage(): React.ReactElement {
                 Pick a check-in and check-out date, or open the form directly.
               </p>
               <button
-                className="mt-5 block w-full rounded-md bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground hover:opacity-90"
+                className="mt-5 block w-full rounded-md bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-700"
                 onClick={() => openBooking()}
                 type="button"
               >
@@ -269,6 +281,9 @@ function BookingDrawer(props: {
   const [checkIn, setCheckIn] = useState(props.initialRange.checkIn)
   const [checkOut, setCheckOut] = useState(props.initialRange.checkOut)
   const [notes, setNotes] = useState('')
+  const [website, setWebsite] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(null)
   const [status, setStatus] = useState<BookingStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
@@ -279,10 +294,26 @@ function BookingDrawer(props: {
     }
   }, [props.initialRange.checkIn, props.initialRange.checkOut, props.isOpen])
 
+  useEffect(() => {
+    if (!props.isOpen || turnstileWidgetId || !window.turnstile) return
+
+    const widgetId = window.turnstile.render('#booking-turnstile', {
+      sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+      callback: setTurnstileToken,
+    })
+    setTurnstileWidgetId(widgetId)
+  }, [props.isOpen, turnstileWidgetId])
+
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setStatus('submitting')
     setError(null)
+
+    if (!turnstileToken) {
+      setStatus('error')
+      setError('Please complete the bot check.')
+      return
+    }
 
     const response = await fetch('/api/bookings', {
       method: 'POST',
@@ -293,6 +324,8 @@ function BookingDrawer(props: {
         checkIn,
         checkOut,
         notes: notes || undefined,
+        website: website || undefined,
+        turnstileToken,
       }),
     })
     const result = (await response.json()) as { success: boolean; error?: string }
@@ -300,6 +333,8 @@ function BookingDrawer(props: {
     if (!result.success) {
       setStatus('error')
       setError(result.error || 'Could not submit booking')
+      window.turnstile?.reset(turnstileWidgetId || undefined)
+      setTurnstileToken('')
       return
     }
 
@@ -309,6 +344,9 @@ function BookingDrawer(props: {
     setCheckIn('')
     setCheckOut('')
     setNotes('')
+    setWebsite('')
+    setTurnstileToken('')
+    window.turnstile?.reset(turnstileWidgetId || undefined)
   }
 
   return (
@@ -316,7 +354,7 @@ function BookingDrawer(props: {
       <button
         aria-label="Close booking form"
         className={[
-          'absolute inset-0 bg-stone-950/35 transition-opacity',
+          'absolute inset-0 bg-stone-950/45 backdrop-blur-[1px] transition-opacity',
           props.isOpen ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
         onClick={props.onClose}
@@ -324,7 +362,7 @@ function BookingDrawer(props: {
       />
       <aside
         className={[
-          'absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-background shadow-2xl transition-transform duration-300',
+          'absolute right-0 top-0 flex h-full w-full max-w-[32rem] flex-col border-l border-border bg-white shadow-2xl transition-transform duration-300',
           props.isOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
@@ -381,6 +419,14 @@ function BookingDrawer(props: {
               />
             </label>
           </div>
+          <label className="hidden" aria-hidden="true">
+            Website
+            <input
+              tabIndex={-1}
+              value={website}
+              onChange={(event) => setWebsite(event.currentTarget.value)}
+            />
+          </label>
           <label className="block text-sm font-medium">
             Notes
             <textarea
@@ -391,6 +437,8 @@ function BookingDrawer(props: {
             />
           </label>
 
+          <div id="booking-turnstile" />
+
           {error ? <p className="rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
           {status === 'success' ? (
             <p className="rounded-md bg-sage-100 p-3 text-sm text-primary">
@@ -399,7 +447,7 @@ function BookingDrawer(props: {
           ) : null}
 
           <button
-            className="w-full rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="w-full rounded-md bg-stone-950 px-4 py-3 text-sm font-semibold text-white hover:bg-stone-700 disabled:opacity-60"
             disabled={status === 'submitting'}
           >
             {status === 'submitting' ? 'Sending…' : 'Send request'}

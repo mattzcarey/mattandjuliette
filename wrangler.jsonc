@@ -6,8 +6,8 @@
   "compatibility_date": "2026-05-02",
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
     {
@@ -15,6 +15,12 @@
       "database_name": "mattandjuliette-db",
       "database_id": "fe0e0d8f-ae25-4f69-a625-da61495984ee",
       "migrations_dir": "migrations"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "SEND_EMAIL",
+      "allowed_sender_addresses": ["noreply@house.mattandjuliette.com"]
     }
   ],
   "observability": {

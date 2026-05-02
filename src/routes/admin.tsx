@@ -95,6 +95,18 @@ function AdminPage(): React.ReactElement {
     setBookings([])
   }
 
+  async function approveBooking(id: string): Promise<void> {
+    const response = await fetch(`/api/bookings/${id}/approve`, { method: 'POST' })
+    const result = (await response.json()) as ApiResponse<Booking>
+
+    if (!result.success) {
+      setError(result.error)
+      return
+    }
+
+    await load()
+  }
+
   async function blockDates(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setError(null)
@@ -190,9 +202,20 @@ function AdminPage(): React.ReactElement {
                         </p>
                         {booking.notes ? <p className="mt-2 text-sm text-stone-600">{booking.notes}</p> : null}
                       </div>
-                      <span className="h-fit rounded-full bg-stone-100 px-3 py-1 text-xs font-medium uppercase">
-                        {booking.status}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span className="h-fit rounded-full bg-stone-100 px-3 py-1 text-xs font-medium uppercase">
+                          {booking.status}
+                        </span>
+                        {booking.status === 'pending' ? (
+                          <button
+                            className="rounded-lg bg-stone-950 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700"
+                            onClick={() => void approveBooking(booking.id)}
+                            type="button"
+                          >
+                            Approve
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </article>
                 ))}
