@@ -13,7 +13,12 @@ declare global {
     turnstile?: {
       render: (
         element: string | HTMLElement,
-        options: { callback: (token: string) => void; sitekey: string },
+        options: {
+          callback: (token: string) => void;
+          "error-callback": () => void;
+          "expired-callback": () => void;
+          sitekey: string;
+        },
       ) => string;
       reset: (widgetId?: string) => void;
     };
@@ -54,7 +59,7 @@ export function HousePage(): React.ReactElement {
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link className="font-serif text-xl font-bold tracking-tight text-primary" to="/">
+          <Link className="text-xl font-normal tracking-tight text-primary" to="/">
             Matt and Juliette
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium">
@@ -67,13 +72,13 @@ export function HousePage(): React.ReactElement {
               type="button"
               variant="ghost"
             >
-              Book a Stay
+              Stay
             </Button>
             <Link
               className="text-muted-foreground transition-colors hover:text-primary"
               to="/admin"
             >
-              Host Login
+              Login
             </Link>
           </nav>
         </div>
@@ -319,6 +324,8 @@ function BookingDrawer(props: {
     const widgetId = window.turnstile.render("#booking-turnstile", {
       sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
       callback: setTurnstileToken,
+      "expired-callback": () => setTurnstileToken(""),
+      "error-callback": () => setTurnstileToken(""),
     });
     setTurnstileWidgetId(widgetId);
   }, [props.isOpen, turnstileWidgetId]);

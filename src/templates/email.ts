@@ -25,3 +25,22 @@ export function bookingCancelledEmail(input: BookingEmailInput): { body: string;
     body: `Hi ${input.guestName},\n\nYour stay from ${input.checkIn} to ${input.checkOut} has been cancelled.\n\nSorry for the change,\nMatt & Juliette`,
   };
 }
+
+export function adminBookingRequestEmail(
+  input: BookingEmailInput & { guestEmail: string; notes: string | null },
+): { body: string; subject: string } {
+  return {
+    subject: `New stay request from ${input.guestName}`,
+    body: [
+      "New stay request",
+      "",
+      `Name: ${input.guestName}`,
+      `Email: ${input.guestEmail}`,
+      `Dates: ${input.checkIn} → ${input.checkOut}`,
+      `Guests: ${input.guestCount}`,
+      `Notes: ${input.notes || "—"}`,
+      "",
+      "Review it in the admin dashboard.",
+    ].join("\n"),
+  };
+}

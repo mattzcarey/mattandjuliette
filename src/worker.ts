@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { z } from "zod";
 import { blockedDates, bookings } from "./db/schema";
 import {
+  adminBookingRequestEmail,
   bookingCancelledEmail,
   bookingConfirmedEmail,
   bookingReceivedEmail,
@@ -19,6 +20,7 @@ interface Env {
 }
 
 const fromEmail = "stay@mattandjuliette.com";
+const adminEmails = ["mattzcarey@gmail.com", "lawsonjuliette@gmail.com"];
 
 const authCookieName = "mandj_admin";
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -139,14 +141,27 @@ async function verifyTurnstile(token: string, env: Env, request: Request): Promi
   formData.append("secret", env.TURNSTILE_SECRET_KEY);
   formData.append("response", token);
 
-  const ip = request.headers.get("CF-Connecting-IP");
-  if (ip) formData.append("remoteip", ip);
-
   const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
     method: "POST",
     body: formData,
   });
-  const result = (await response.json()) as { success?: boolean };
+  const result = (await response.json()) as {
+    "error-codes"?: string[];
+    action?: string;
+    cdata?: string;
+    challenge_ts?: string;
+    hostname?: string;
+    success?: boolean;
+  };
+
+  if (result.success !== true) {
+    console.warn("Turnstile verification failed", {
+      errors: result["error-codes"] || [],
+      hostname: result.hostname,
+      userAgent: request.headers.get("User-Agent"),
+    });
+  }
+
   return result.success === true;
 }
 
@@ -166,6 +181,10 @@ function addDays(date: string, days: number): string {
   const value = new Date(`${date}T00:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
+}
+
+function dateRangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart <= bEnd && aEnd >= bStart;
 }
 
 function createIcsEvent(input: {
@@ -232,7 +251,7 @@ async function createAdminCalendar(env: Env): Promise<string> {
   ].join("\r\n");
 }
 
-async function handleApi(request: Request, env: Env): Promise<Response> {
+async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const db = drizzle(env.DB);
 
@@ -315,11 +334,45 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
     const turnstileOk = await verifyTurnstile(parsed.data.turnstileToken, env, request);
     if (!turnstileOk) {
-      return json({ success: false, error: "Bot check failed" }, { status: 400 });
+      return json(
+        { success: false, error: "Bot check failed. Please refresh and try again." },
+        { status: 400 },
+      );
     }
 
     if (parsed.data.checkOut <= parsed.data.checkIn) {
       return json({ success: false, error: "Check-out must be after check-in" }, { status: 400 });
+    }
+
+    const requestedLastNight = addDays(parsed.data.checkOut, -1);
+    const [blockedRows, bookingRows] = await Promise.all([
+      db.select().from(blockedDates),
+      db.select().from(bookings),
+    ]);
+    const overlapsBlocked = blockedRows.some((blocked) =>
+      dateRangesOverlap(
+        parsed.data.checkIn,
+        requestedLastNight,
+        blocked.startDate,
+        blocked.endDate,
+      ),
+    );
+    const overlapsBooking = bookingRows
+      .filter((booking) => booking.status === "confirmed")
+      .some((booking) =>
+        dateRangesOverlap(
+          parsed.data.checkIn,
+          requestedLastNight,
+          booking.checkIn,
+          addDays(booking.checkOut, -1),
+        ),
+      );
+
+    if (overlapsBlocked || overlapsBooking) {
+      return json(
+        { success: false, error: "Those dates are busy. Please choose different dates." },
+        { status: 409 },
+      );
     }
 
     const row = {
@@ -336,7 +389,15 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
     await db.insert(bookings).values(row);
     const email = bookingReceivedEmail(row);
-    await sendEmail(env, row.guestEmail, email.subject, email.body);
+    const adminEmail = adminBookingRequestEmail({ ...row, notes: row.notes });
+    ctx.waitUntil(
+      Promise.all([
+        sendEmail(env, row.guestEmail, email.subject, email.body),
+        ...adminEmails.map((adminEmailAddress) =>
+          sendEmail(env, adminEmailAddress, adminEmail.subject, adminEmail.body),
+        ),
+      ]).then(() => undefined),
+    );
 
     return json({ success: true, data: row }, { status: 201 });
   }
@@ -377,7 +438,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     await db.update(bookings).set({ status: "confirmed" }).where(eq(bookings.id, id));
     const approved = { ...existing, status: "confirmed" as const };
     const email = bookingConfirmedEmail(approved);
-    await sendEmail(env, approved.guestEmail, email.subject, email.body);
+    ctx.waitUntil(sendEmail(env, approved.guestEmail, email.subject, email.body));
 
     return json({ success: true, data: approved });
   }
@@ -394,7 +455,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, id));
     const cancelled = { ...existing, status: "cancelled" as const };
     const email = bookingCancelledEmail(cancelled);
-    await sendEmail(env, cancelled.guestEmail, email.subject, email.body);
+    ctx.waitUntil(sendEmail(env, cancelled.guestEmail, email.subject, email.body));
 
     return json({ success: true, data: cancelled });
   }
@@ -420,7 +481,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
           type: "blocked" as const,
         })),
         ...bookingRows
-          .filter((row) => row.status !== "cancelled")
+          .filter((row) => row.status === "confirmed")
           .map((row) => ({
             id: row.id,
             reason: "At capacity",
@@ -470,11 +531,11 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
-      return handleApi(request, env);
+      return handleApi(request, env, ctx);
     }
 
     return new Response("Not found", { status: 404 });
