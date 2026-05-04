@@ -217,15 +217,17 @@ async function createAdminCalendar(env: Env): Promise<string> {
     db.select().from(blockedDates).orderBy(desc(blockedDates.createdAt)),
   ]);
 
-  const bookingEvents = bookingRows.map((booking) =>
-    createIcsEvent({
-      id: `booking-${booking.id}`,
-      startDate: booking.checkIn,
-      endDate: booking.checkOut,
-      summary: `[${booking.status.toUpperCase()}] ${booking.guestName} · ${booking.guestCount} guest${booking.guestCount === 1 ? "" : "s"}`,
-      description: `${booking.guestName}\n${booking.guestEmail}\n${booking.checkIn} → ${booking.checkOut}\n${booking.notes || ""}`,
-    }),
-  );
+  const bookingEvents = bookingRows
+    .filter((booking) => booking.status !== "cancelled")
+    .map((booking) =>
+      createIcsEvent({
+        id: `booking-${booking.id}`,
+        startDate: booking.checkIn,
+        endDate: addDays(booking.checkOut, -1),
+        summary: `[${booking.status.toUpperCase()}] ${booking.guestName} · ${booking.guestCount} guest${booking.guestCount === 1 ? "" : "s"}`,
+        description: `${booking.guestName}\n${booking.guestEmail}\n${booking.checkIn} → ${booking.checkOut}\n${booking.notes || ""}`,
+      }),
+    );
 
   const blockedEvents = blockedRows.map((blocked) =>
     createIcsEvent({
@@ -255,18 +257,25 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
   const url = new URL(request.url);
   const db = drizzle(env.DB);
 
-  if (request.method === "GET" && url.pathname === "/api/calendar/admin.ics") {
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    url.pathname === "/api/calendar/admin.ics"
+  ) {
     if (url.searchParams.get("token") !== env.ADMIN_CALENDAR_TOKEN) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response(null, { status: 401 });
     }
 
-    return new Response(await createAdminCalendar(env), {
-      headers: {
-        "Cache-Control": "private, max-age=300",
-        "Content-Disposition": 'inline; filename="mattandjuliette-admin.ics"',
-        "Content-Type": "text/calendar; charset=utf-8",
-      },
-    });
+    const headers = {
+      "Cache-Control": "private, max-age=300",
+      "Content-Disposition": 'inline; filename="mattandjuliette-admin.ics"',
+      "Content-Type": "text/calendar; charset=utf-8",
+    };
+
+    if (request.method === "HEAD") {
+      return new Response(null, { headers });
+    }
+
+    return new Response(await createAdminCalendar(env), { headers });
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/calendar-url") {
